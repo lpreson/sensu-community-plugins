@@ -122,6 +122,7 @@ class DelayedMailer < Sensu::Handler
 
       key= "dm_#{short_name}_#{Time.now.to_i}"
       redis.set key, 1
+      puts "expires #{@settings['delayed_mailer']['expire'].to_i}"
       redis.expire key, @settings['delayed_mailer']['expire'].to_i
     ensure
       redis.quit
