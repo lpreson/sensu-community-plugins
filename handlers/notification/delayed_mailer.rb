@@ -16,6 +16,11 @@ require 'timeout'
 require 'redis'
 
 class DelayedMailer < Sensu::Handler
+
+  def filter
+
+  end
+
   def short_name
     @event['client']['name'] + '/' + @event['check']['name']
   end
