@@ -58,7 +58,7 @@ class DelayedMailer < Sensu::Handler
       add_key
     end
 
-    if (keys.size >= params[:alerts_in_time_period_before_email] and action_to_string == "ALERT")
+    if (keys.size >= settings['delayed_mailer']['alerts_in_time_period_before_email'].to_i and action_to_string == "ALERT")
       add_negative_email_alert
       puts "emailed"
       send_email
