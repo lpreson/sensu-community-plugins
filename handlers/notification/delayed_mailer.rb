@@ -82,8 +82,8 @@ class DelayedMailer < Sensu::Handler
 
   def remove_negative_email_key
     begin
-      redis = Redis.new(:host => @settings[:redis][:host],
-                        :port => @settings[:redis][:port])
+      redis = Redis.new(:host => @settings['redis']['host'],
+                        :port => @settings['redis']['port'])
       redis.del "dm_#{short_name}-email"
     ensure
       redis.quit
@@ -92,8 +92,8 @@ class DelayedMailer < Sensu::Handler
 
   def add_negative_email_alert
     begin
-      redis = Redis.new(:host => @settings[:redis][:host],
-                        :port => @settings[:redis][:port])
+      redis = Redis.new(:host => @settings['redis']['host'],
+                        :port => @settings['redis']['port'])
       redis.set "dm_#{short_name}-email", 1
     ensure
       redis.quit
@@ -102,8 +102,8 @@ class DelayedMailer < Sensu::Handler
 
   def keys
     begin
-      redis = Redis.new(:host => @settings[:redis][:host],
-                        :port => @settings[:redis][:port])
+      redis = Redis.new(:host => @settings['redis']['host'],
+                        :port => @settings['redis']['port'])
       redis.keys "dm_#{short_name}_*"
     ensure
       redis.quit
@@ -112,8 +112,8 @@ class DelayedMailer < Sensu::Handler
 
   def add_key
     begin
-      redis = Redis.new(:host => @settings[:redis][:host],
-                        :port => @settings[:redis][:port])
+      redis = Redis.new(:host => @settings['redis']['host'],
+                        :port => @settings['redis']['port'])
 
       key= "dm_#{short_name}_#{Time.now.to_i}"
       redis.set key, 1
@@ -126,8 +126,8 @@ end
 
 def negative_email_sent?
   begin
-    redis = Redis.new(:host => @settings[:redis][:host],
-                      :port => @settings[:redis][:port])
+    redis = Redis.new(:host => @settings['redis']['host'],
+                      :port => @settings['redis']['port'])
     redis.exists "dm_#{short_name}-email"
   ensure
     redis.quit
