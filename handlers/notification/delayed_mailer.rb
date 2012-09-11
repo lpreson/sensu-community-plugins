@@ -94,7 +94,7 @@ class DelayedMailer < Sensu::Handler
     begin
       redis = Redis.new(:host => @settings[:redis][:host],
                         :port => @settings[:redis][:port])
-      redis.keys "dm_#{short_name}-email"
+      redis.set "dm_#{short_name}-email", 1
     ensure
       redis.quit
     end
