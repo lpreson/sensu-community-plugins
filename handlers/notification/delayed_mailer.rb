@@ -33,7 +33,6 @@ class DelayedMailer < Sensu::Handler
     smtp_address = settings['delayed_mailer']['smtp_address'] || 'localhost'
     smtp_port = settings['delayed_mailer']['smtp_port'] || '25'
     smtp_domain = settings['delayed_mailer']['smtp_domain'] || 'localhost.localdomain'
-    expire= params[:expire]
 
     params = {
         :mail_to => settings['delayed_mailer']['mail_to'],
@@ -56,7 +55,7 @@ class DelayedMailer < Sensu::Handler
     end
 
     if (action_to_string == "ALERT")
-      add_key(expire)
+      add_key
     end
 
     if (keys.size >= params[:alerts_in_time_period_before_email] and action_to_string == "ALERT")
@@ -116,14 +115,14 @@ class DelayedMailer < Sensu::Handler
     end
   end
 
-  def add_key(expire)
+  def add_key
     begin
       redis = Redis.new(:host => @settings['redis']['host'],
                         :port => @settings['redis']['port'])
 
       key= "dm_#{short_name}_#{Time.now.to_i}"
       redis.set key, 1
-      redis.expire key, expire
+      redis.expire key, @settings['delayed_mailer']['expire'].to_i
     ensure
       redis.quit
     end
