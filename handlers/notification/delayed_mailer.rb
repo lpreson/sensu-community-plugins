@@ -61,14 +61,14 @@ class DelayedMailer < Sensu::Handler
     if (keys.size >= settings['delayed_mailer']['alerts_in_time_period_before_email'].to_i and action_to_string == "ALERT")
       add_negative_email_alert
       puts "emailed"
-      send_email
+      send_email(params)
     elsif (action_to_string == "RESOLVED" and negative_email_sent?)
       remove_negative_email_key
-      send_email
+      send_email(params)
     end
   end
 
-  def send_email
+  def send_email(params)
     begin
       timeout 10 do
         Mail.deliver do
