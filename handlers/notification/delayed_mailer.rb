@@ -133,4 +133,3 @@ def negative_email_sent?
     redis.quit
   end
 end
-s
