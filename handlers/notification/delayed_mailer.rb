@@ -25,13 +25,13 @@ class DelayedMailer < Sensu::Handler
   end
 
   def handle
-    smtp_address = settings['mailer']['smtp_address'] || 'localhost'
-    smtp_port = settings['mailer']['smtp_port'] || '25'
-    smtp_domain = settings['mailer']['smtp_domain'] || 'localhost.localdomain'
+    smtp_address = settings['delayed_mailer']['smtp_address'] || 'localhost'
+    smtp_port = settings['delayed_mailer']['smtp_port'] || '25'
+    smtp_domain = settings['delayed_mailer']['smtp_domain'] || 'localhost.localdomain'
 
     params = {
-        :mail_to => settings['mailer']['mail_to'],
-        :mail_from => settings['mailer']['mail_from'],
+        :mail_to => settings['delayed_mailer']['mail_to'],
+        :mail_from => settings['delayed_mailer']['mail_from'],
         :smtp_addr => smtp_address,
         :smtp_port => smtp_port,
         :smtp_domain => smtp_domain
@@ -133,5 +133,4 @@ def negative_email_sent?
     redis.quit
   end
 end
-
-DelayedMailer.handle
+s
