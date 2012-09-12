@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 #
-# Sensu Handler: mailer
+# Sensu Handler: delayed_mailer
 #
 # This handler formats alerts as an email and delays sending until a specified threshold.
 #
