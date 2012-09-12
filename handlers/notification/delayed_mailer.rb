@@ -18,7 +18,11 @@ require 'redis'
 class DelayedMailer < Sensu::Handler
 
   def filter
-
+    #removed filter of repeated, delayed mailer will handle this
+    #filter_repeated
+    filter_disabled
+    filter_silenced
+    filter_dependencies
   end
 
   def short_name
@@ -59,7 +63,7 @@ class DelayedMailer < Sensu::Handler
     end
 
     if (keys.size >= settings['delayed_mailer']['alerts_in_time_period_before_email'].to_i and action_to_string == "ALERT")
-      add_negative_email_alert
+      add_negative_email_key
       puts "emailed"
       send_email(params, subject, body)
     elsif (action_to_string == "RESOLVED" and negative_email_sent?)
@@ -95,7 +99,7 @@ class DelayedMailer < Sensu::Handler
     end
   end
 
-  def add_negative_email_alert
+  def add_negative_email_key
     begin
       redis = Redis.new(:host => @settings['redis']['host'],
                         :port => @settings['redis']['port'])
