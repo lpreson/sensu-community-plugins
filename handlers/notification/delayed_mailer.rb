@@ -17,6 +17,31 @@ require 'redis'
 
 class DelayedMailer < Sensu::Handler
 
+  @@email_template=
+      "<html>
+                      <body>
+                        <h1>$header</h1>
+                        <table>
+                            <tr>
+                                <td>Time</td>
+                                <td>$time</td>
+                            </tr>
+                            <tr>
+                                <td>Occurrences</td>
+                                <td>$occurrences</td>
+                            </tr>
+                            <tr>
+                                <td>Flapping</td>
+                                <td>$flapping</td>
+                            </tr>
+                            <tr>
+                                <td>Sleep Period</td>
+                                <td>$sleep_period</td>
+                            </tr>
+                        </table>
+                      </body>
+                    </html>"
+
   def filter
     #removed filter of repeated, delayed mailer will handle this
     #filter_repeated
@@ -34,86 +59,25 @@ class DelayedMailer < Sensu::Handler
   end
 
   def handle
-    smtp_address = settings['delayed_mailer']['smtp_address'] || 'localhost'
-    smtp_port = settings['delayed_mailer']['smtp_port'] || '25'
-    smtp_domain = settings['delayed_mailer']['smtp_domain'] || 'localhost.localdomain'
 
-    params = {
-        :mail_to => settings['delayed_mailer']['mail_to'],
-        :mail_from => settings['delayed_mailer']['mail_from'],
-        :smtp_addr => smtp_address,
-        :smtp_port => smtp_port,
-        :smtp_domain => smtp_domain
-    }
+    subject = "#{action_to_string} - #{short_name}"
+    body = build_body
 
-    body = "#{@event['check']['output']}"
-    subject = "#{action_to_string} - #{short_name}: #{@event['check']['notification']}"
-
-    Mail.defaults do
-      delivery_method :smtp, {
-          :address => params[:smtp_addr],
-          :port => params[:smtp_port],
-          :domain => params[:smtp_domain],
-          :openssl_verify_mode => 'none'
-      }
-    end
-
-    if (action_to_string == "ALERT")
+    if action_to_string == "ALERT" and not event_occurred?
       add_key
+      send_email(subject, body)
+    elsif action_to_string == "RESOLVED" and event_occurred?
+      remove_key
+      send_email(subject, body)
     end
 
-    if (keys.size >= settings['delayed_mailer']['alerts_in_time_period_before_email'].to_i and action_to_string == "ALERT")
-      add_negative_email_key
-      puts "emailed"
-      send_email(params, subject, body)
-    elsif (action_to_string == "RESOLVED" and negative_email_sent?)
-      remove_negative_email_key
-      send_email(params, subject, body)
-    end
   end
 
-  def send_email(params, subject, body)
-    begin
-      timeout 10 do
-        Mail.deliver do
-          to params[:mail_to]
-          from params[:mail_from]
-          subject subject
-          body body
-        end
-
-        puts 'mail -- sent alert for ' + short_name + ' to ' + params[:mail_to]
-      end
-    rescue Timeout::Error
-      puts 'mail -- timed out while attempting to ' + @event['action'] + ' an incident -- ' + short_name
-    end
-  end
-
-  def remove_negative_email_key
+  def remove_key
     begin
       redis = Redis.new(:host => @settings['redis']['host'],
                         :port => @settings['redis']['port'])
-      redis.del "dm_#{short_name}-email"
-    ensure
-      redis.quit
-    end
-  end
-
-  def add_negative_email_key
-    begin
-      redis = Redis.new(:host => @settings['redis']['host'],
-                        :port => @settings['redis']['port'])
-      redis.set "dm_#{short_name}-email", 1
-    ensure
-      redis.quit
-    end
-  end
-
-  def keys
-    begin
-      redis = Redis.new(:host => @settings['redis']['host'],
-                        :port => @settings['redis']['port'])
-      redis.keys "dm_#{short_name}_*"
+      redis.del key
     ensure
       redis.quit
     end
@@ -123,23 +87,69 @@ class DelayedMailer < Sensu::Handler
     begin
       redis = Redis.new(:host => @settings['redis']['host'],
                         :port => @settings['redis']['port'])
-
-      key= "dm_#{short_name}_#{Time.now.to_i}"
       redis.set key, 1
-      puts "expires #{@settings['delayed_mailer']['expire'].to_i}"
-      redis.expire key, @settings['delayed_mailer']['expire'].to_i
+      redis.expire key, @settings['delayed_mailer']['sleep_period']
     ensure
       redis.quit
     end
   end
-end
 
-def negative_email_sent?
-  begin
-    redis = Redis.new(:host => @settings['redis']['host'],
-                      :port => @settings['redis']['port'])
-    redis.exists "dm_#{short_name}-email"
-  ensure
-    redis.quit
+
+  def event_occurred?
+    begin
+      redis = Redis.new(:host => @settings['redis']['host'],
+                        :port => @settings['redis']['port'])
+      redis.exists key
+    ensure
+      redis.quit
+    end
+  end
+
+  def key
+    "dm_#{short_name}_occurred"
+  end
+
+  def build_body
+    body= @@email_template.gsub('$header', @event['check']['output'])
+    body= body.gsub('$time', Time.at(@event['check']['issued'].to_i).to_s)
+    body= body.gsub('$occurrences', @event['occurrences'].to_s)
+    body= body.gsub('$flapping', @event['check']['flapping'].to_s)
+    body= body.gsub('$sleep_period', @settings['delayed_mailer']['sleep_period'].to_s)
+  end
+
+  def send_email(subject, body)
+    begin
+      smtp_address = settings['delayed_mailer']['smtp_address'] || 'localhost'
+      smtp_port = settings['delayed_mailer']['smtp_port'] || '25'
+      smtp_domain = settings['delayed_mailer']['smtp_domain'] || 'localhost.localdomain'
+      mail_from= settings['delayed_mailer']['mail_from']
+
+      Mail.defaults do
+        delivery_method :smtp, {
+            :address => smtp_address,
+            :port => smtp_port,
+            :domain => smtp_domain,
+            :openssl_verify_mode => 'none'
+        }
+      end
+
+      ARGV.each do |mail_to|
+        timeout 10 do
+          Mail.deliver do
+            to mail_to
+            from mail_from
+            subject subject
+            html_part do
+              content_type 'text/html; charset=UTF-8'
+              body body
+            end
+          end
+        end
+
+        puts 'mail -- sent alert for ' + short_name + ' to ' + mail_to
+      end
+    rescue Timeout::Error
+      puts 'mail -- timed out while attempting to ' + @event['action'] + ' an incident -- ' + short_name
+    end
   end
 end
