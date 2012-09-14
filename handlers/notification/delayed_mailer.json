@@ -1,11 +1,9 @@
 {
   "delayed_mailer": {
     "mail_from": "sensu@example.com",
-    "mail_to": "lewis@preson.co.uk",
     "smtp_address": "smtp.example.org",
     "smtp_port": "25",
     "smtp_domain": "example.org",
-    "expire": 20,
-    "alerts_in_time_period_before_email": 2
+    "sleep_period": 1800
   }
 }
